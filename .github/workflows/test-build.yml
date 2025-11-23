@@ -1,0 +1,62 @@
+name: Build Gema VST
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:   # allows manual trigger
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x86, x64]
+        config: [Release]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+
+      - name: Download & extract VST2 SDK
+        run: |
+          curl -L -o vst_sdk.zip https://archive.org/download/vstsdk369_12_08_2018/vst_sdk2_4_rev7.zip
+          7z x vst_sdk.zip -oVST_SDK
+          echo "VST_SDK_PATH=%cd%\VST_SDK\vst_sdk2_4_rev7" >> %GITHUB_ENV%
+
+      - name: Create build directory
+        run: mkdir build_${{ matrix.arch }}
+
+      - name: Configure with CMake (minimal)
+        working-directory: build_${{ matrix.arch }}
+        run: |
+          cmake -A ${{ matrix.arch == 'x64' && 'x64' || 'Win32' }} `
+                 -DCMAKE_BUILD_TYPE=${{ matrix.config }} `
+                 -DVST_SDK_PATH="${{ env.VST_SDK_PATH }}" `
+                 ..
+
+      - name: Build
+        working-directory: build_${{ matrix.arch }}
+        run: cmake --build . --config ${{ matrix.config }} --parallel
+
+      - name: Rename DLLs nicely
+        run: |
+          if("${{ matrix.arch }}" -eq "x64") {
+            Copy-Item "build_${{ matrix.arch }}\${{ matrix.config }}\Gema.dll" -Destination "Gema-x64.dll"
+          } else {
+            Copy-Item "build_${{ matrix.arch }}\${{ matrix.config }}\Gema.dll" -Destination "Gema-x86.dll"
+          }
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gema-${{ matrix.arch }}-${{ matrix.config }}
+          path: |
+            Gema-x64.dll
+            Gema-x86.dll
+          if-no-files-found: error
