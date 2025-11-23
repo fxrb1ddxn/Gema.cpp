@@ -27,7 +27,7 @@ jobs:
         run: |
           curl -L -o vst_sdk.zip https://archive.org/download/VST2SDK/vst_sdk2_4_rev2.zip
           7z x vst_sdk.zip -oVST_SDK
-          echo "VST_SDK_PATH=%cd%\VST_SDK\vst_sdk2_4" >> %GITHUB_ENV%
+          echo "VST_SDK_PATH=%cd%\VST_SDK\vstsdk2.4" >> %GITHUB_ENV%
 
       - name: Create build directory
         run: mkdir build_${{ matrix.arch }}
